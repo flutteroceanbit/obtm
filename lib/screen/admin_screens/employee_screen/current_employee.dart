@@ -1,0 +1,858 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oceanbit_timeclock/bloc_logic/register_bloc/register_bloc.dart';
+import 'package:oceanbit_timeclock/bloc_logic/register_bloc/register_event.dart';
+import 'package:oceanbit_timeclock/bloc_logic/register_bloc/register_state.dart';
+import 'package:oceanbit_timeclock/bloc_logic/user_detail_bloc/user_detail_bloc.dart';
+import 'package:oceanbit_timeclock/constant/api.dart';
+import 'package:oceanbit_timeclock/screen/admin_screens/employee_screen/widgets/alert_dialog.dart';
+import 'package:oceanbit_timeclock/screen/admin_screens/employee_screen/widgets/reset_password_dialog.dart';
+import 'package:oceanbit_timeclock/screen/profile/profile_screen.dart';
+import 'package:oceanbit_timeclock/widget/new/custom_cardview.dart';
+import 'package:oceanbit_timeclock/widget/new/custom_header_container.dart';
+import 'package:responsive_grid/responsive_grid.dart';
+import 'package:velocity_x/velocity_x.dart';
+
+import '../../../bloc_logic/add_update_personal_detail_bloc/add_update_personal_detail_bloc.dart';
+import '../../../bloc_logic/user_list_bloc/user_list_bloc.dart';
+import '../../../constant/constant.dart';
+import '../../../constant/strings.dart';
+import '../../../models/user_detail_model.dart';
+import '../../../models/user_list_model.dart';
+import '../../../utils/logger.dart';
+import '../../../widget/custom_container_button.dart';
+import '../../../widget/custom_textfield_with_label.dart';
+import '../../dashboard/dashboard.dart';
+
+UserData? userDataInAdmin;
+
+class CurrentEmployee extends StatefulWidget {
+  const CurrentEmployee({Key? key, this.rowSegment, this.sizeTag})
+    : super(key: key);
+  final int? rowSegment;
+  final int? sizeTag;
+
+  @override
+  State<CurrentEmployee> createState() => _CurrentEmployeeState();
+}
+
+bool isProfileDetail = false;
+int selectedTabIndex = 0;
+List<UserModelData> userList = [];
+List<UserModelData> userListModel = [];
+int selectedUserId = 0;
+UserModelData? certificateData;
+
+class _CurrentEmployeeState extends State<CurrentEmployee> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _autoValidateMode = false;
+  int selectedIndex = -1;
+  UserData? data;
+  TextEditingController firstNameController = TextEditingController();
+  TextEditingController lastNameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
+
+  @override
+  void initState() {
+    /* if(userListModel==null){
+      BlocProvider.of<UserListBloc>(context)
+          .add(FetchUserListEvent(context: context));
+    }*/
+    super.initState();
+  }
+
+  // @override
+  //   void didChangeDependencies() {
+  //   BlocProvider.of<UserListBloc>(context).add(FetchUserListEvent(context: context));
+  //   // isProfileDetail = false;
+  //   print('employee init state');
+  //   //selectedTabIndex = 0;
+  //     super.didChangeDependencies();
+  //   }
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) =>
+          UserListBloc()..add(FetchUserListEvent(context: context)),
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<UserListBloc, UserListState>(
+            listener: (context, state) {
+              if (state is GetUserListErrorState) {
+                msgList.add(Constant().ShowErrorMessage(state.error, context));
+                Constant.myLoader.hide();
+                //Constant().ShowErrorToast(state.error, context);
+              } else if (state is GetUserListLoadedState) {
+                setState(() {
+                  setState(() {
+                    userList = List.generate(
+                      state.data!.data!.length,
+                      (index) => state.data!.data![index],
+                    );
+
+                    userList = userList
+                        .where((map) => map.isActive == 1)
+                        .toList();
+
+                    userListModel.clear();
+
+                    for (int i = 0; i < userList.length; i++) {
+                      if (userList[i].lastTimeSlot?.actionType ==
+                              Strings.time_status[0] ||
+                          userList[i].lastTimeSlot?.actionType ==
+                              Strings.time_status[2]) {
+                        userListModel.add(userList[i]);
+                      }
+                    }
+
+                    for (int i = 0; i < userList.length; i++) {
+                      if (userList[i].lastTimeSlot?.actionType ==
+                          Strings.time_status[1]) {
+                        userListModel.add(userList[i]);
+                      }
+                    }
+
+                    for (int i = 0; i < userList.length; i++) {
+                      userList[i].lastTimeSlot != null
+                          ? userList[i].lastTimeSlot?.actionType ==
+                                        Strings.time_status[0] ||
+                                    userList[i].lastTimeSlot?.actionType ==
+                                        Strings.time_status[2]
+                                ? Constant.cGreenLight
+                                : userList[i].lastTimeSlot?.actionType ==
+                                      Strings.time_status[1]
+                                ? Constant.cYellowDark
+                                : userListModel.add(userList[i])
+                          : Constant.cWhite;
+                    }
+
+                    for (int i = 0; i < userList.length; i++) {
+                      if (userList[i].lastTimeSlot == null) {
+                        userListModel.add(userList[i]);
+                      }
+                    }
+                  });
+                });
+              }
+            },
+          ),
+          BlocListener<
+            AddUpdatePersonalDetailBloc,
+            AddUpdatePersonalDetailState
+          >(
+            listener: (context, state) {
+              if (state is UserStatusUpdateError) {
+                msgList.add(Constant().ShowErrorMessage(state.error, context));
+                Constant.myLoader.hide();
+                //Constant().ShowErrorToast(state.error, context);
+              } else if (state is UserStatusUpdateLoaded) {
+                BlocProvider.of<UserListBloc>(
+                  context,
+                ).add(FetchUserListEvent(context: context));
+                Navigator.pop(context);
+                // showDialog(
+                //   context: context,
+                //   builder: ((context) {
+                //     return Material(
+                //       color: Constant.cBlack.withOpacity(0.1),
+                //       child: Padding(
+                //         padding: EdgeInsets.only(
+                //           right: Constant.padding3x,
+                //           left: MediaQuery.of(context).size.width * 0.2,
+                //         ),
+                //         child: Center(
+                //           child: certificatePreviewDialog(
+                //             context,
+                //             certificateData!,
+                //           ),
+                //         ),
+                //       ),
+                //     );
+                //   }),
+                // );
+              }
+            },
+          ),
+          BlocListener<UserDetailBloc, UserDetailState>(
+            listener: (context, state) {
+              if (state is UserDetailErrorState) {
+                Constant.myLoader.hide();
+                msgList.add(Constant().ShowErrorMessage(state.error, context));
+                // Constant().ShowErrorToast(state.error, context);
+              } else if (state is UserDetailLoadedState) {
+                setState(() {
+                  data = state.data;
+                  userDataInAdmin = data;
+                  isProfileDetail = true;
+                });
+              }
+            },
+          ),
+          BlocListener<RegisterBloc, RegisterState>(
+            listener: (context, state) {
+              if (state is RegisterLoadedState) {
+                Navigator.pop(context);
+                emailController.clear();
+                phoneController.clear();
+                firstNameController.clear();
+                lastNameController.clear();
+                passwordController.clear();
+                confirmPasswordController.clear();
+                msgList.add(
+                  Constant().ShowMessage(state.data!.message!, context),
+                );
+                BlocProvider.of<UserListBloc>(
+                  context,
+                ).add(FetchUserListEvent(context: context));
+              } else if (state is RegisterErrorState) {
+                msgList.add(Constant().ShowErrorMessage(state.error, context));
+                Constant.myLoader.hide();
+
+                Constant().ShowErrorToast(state.error, context);
+              }
+            },
+          ),
+        ],
+        child: isProfileDetail
+            ? ProfileScreen(
+                menuItem: Strings.adminDrawerItem[13],
+                isEmployee: isProfileDetail,
+                userDetail: data,
+                isBack: (val) {
+                  isProfileDetail = val;
+                  setState(() {});
+                },
+                rowSegment: widget.rowSegment,
+                sizeTag: widget.sizeTag,
+              )
+            : CustomHeaderContainer(
+                padding: const EdgeInsets.symmetric(
+                  vertical: Constant.paddingMidHalf,
+                ),
+                headerWidget: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      Strings.employee,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(color: Constant.cWhite),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: ((context) {
+                                return Material(
+                                  color: Constant.cBlack.withOpacity(0.1),
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      right: widget.sizeTag == 2
+                                          ? MediaQuery.of(context).size.width *
+                                                0.3
+                                          : MediaQuery.of(context).size.width *
+                                                0.2,
+                                      left: widget.sizeTag == 2
+                                          ? MediaQuery.of(context).size.width *
+                                                0.3
+                                          : MediaQuery.of(context).size.width *
+                                                0.2,
+                                    ),
+                                    child: Center(child: infoDialog()),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                          icon: const Icon(Icons.info, color: Colors.white),
+                        ),
+                        CustomContainerButton(
+                          text: Strings.addEmployee,
+                          textStyle: Constant.textStyleSize13(
+                            context,
+                          )!.copyWith(color: Constant.cBlack),
+                          color: Constant.cWhite,
+                          width: 110,
+                          onTap: () {
+                            emailController.clear();
+                            phoneController.clear();
+                            firstNameController.clear();
+                            lastNameController.clear();
+                            passwordController.clear();
+                            confirmPasswordController.clear();
+                            showDialog(
+                              context: context,
+                              builder: ((context) {
+                                return Material(
+                                  color: Constant.cBlack.withOpacity(0.1),
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      right: Constant.padding3x,
+                                      left:
+                                          MediaQuery.of(context).size.width *
+                                          0.2,
+                                    ),
+                                    child: Center(child: customDialog()),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    BlocConsumer<UserListBloc, UserListState>(
+                      listener: (context, state) {
+                        if (state is GetUserListErrorState) {
+                          // Constant().ShowErrorToast(state.error, context);
+                          msgList.add(
+                            Constant().ShowErrorMessage(state.error, context),
+                          );
+                          Constant.myLoader.hide();
+                        } else if (state is GetUserListLoadedState) {
+                          setState(() {
+                            userList = List.generate(
+                              state.data!.data!.length,
+                              (index) => state.data!.data![index],
+                            );
+
+                            userList = userList
+                                .where((map) => map.isActive == 1)
+                                .toList();
+
+                            userListModel.clear();
+
+                            for (int i = 0; i < userList.length; i++) {
+                              if (userList[i].lastTimeSlot?.actionType ==
+                                      Strings.time_status[0] ||
+                                  userList[i].lastTimeSlot?.actionType ==
+                                      Strings.time_status[2]) {
+                                userListModel.add(userList[i]);
+                              }
+                            }
+
+                            for (int i = 0; i < userList.length; i++) {
+                              if (userList[i].lastTimeSlot?.actionType ==
+                                  Strings.time_status[1]) {
+                                userListModel.add(userList[i]);
+                              }
+                            }
+
+                            for (int i = 0; i < userList.length; i++) {
+                              userList[i].lastTimeSlot != null
+                                  ? userList[i].lastTimeSlot?.actionType ==
+                                                Strings.time_status[0] ||
+                                            userList[i]
+                                                    .lastTimeSlot
+                                                    ?.actionType ==
+                                                Strings.time_status[2]
+                                        ? Constant.cGreenLight
+                                        : userList[i]
+                                                  .lastTimeSlot
+                                                  ?.actionType ==
+                                              Strings.time_status[1]
+                                        ? Constant.cYellowDark
+                                        : userListModel.add(userList[i])
+                                  : Constant.cWhite;
+                            }
+
+                            for (int i = 0; i < userList.length; i++) {
+                              if (userList[i].lastTimeSlot == null) {
+                                userListModel.add(userList[i]);
+                              }
+                            }
+                          });
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is GetUserListLoadingState) {
+                          return const Flexible(
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Constant.cWhite,
+                              ),
+                            ),
+                          );
+                        }
+                        return userListModel.isNotEmpty
+                            ? Expanded(
+                                child: ResponsiveGridList(
+                                  physics: const BouncingScrollPhysics(),
+                                  shrinkWrap: true,
+                                  rowMainAxisAlignment: MainAxisAlignment.start,
+                                  desiredItemWidth: 120,
+                                  minSpacing: 20,
+                                  children: userListModel.map((i) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: Constant.paddingHalfHalf,
+                                      ),
+                                      child: customEmployeeNameWithProfilePic(
+                                        i,
+                                      ),
+                                    );
+                                  }).toList(),
+                                ) /*Container(
+                              child: customEmployeeNameWithProfilePic(widget.rowSegment!),
+                            ),*/,
+                              )
+                            : const Flexible(
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Constant.cWhite,
+                                  ),
+                                ),
+                              );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget infoDialog() {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Wrap(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Constant.paddingHalf),
+                color: Constant.cWhite,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(Constant.paddingHalf),
+                        topLeft: Radius.circular(Constant.paddingHalf),
+                      ),
+                      color: Constant.colorSelectedIndicator,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Constant.paddingHalf),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Spacer(),
+                          Text(
+                            Strings.employeeStatusInfo,
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(color: Constant.cWhite),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Icon(
+                              Icons.close,
+                              color: Constant.cWhite,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        bottomRight: Radius.circular(Constant.paddingHalf),
+                        bottomLeft: Radius.circular(Constant.paddingHalf),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: Constant.padding,
+                        left: Constant.padding,
+                        bottom: Constant.padding,
+                        right: MediaQuery.of(context).size.width * 0.1,
+                      ),
+                      child: Column(
+                        children: [
+                          customRow(
+                            color: Constant.cGreenLight,
+                            text: 'Employee In Company And Doing there work',
+                          ),
+                          customRow(
+                            color: Constant.cYellowDark,
+                            text: 'Employee go for break',
+                          ),
+                          customRow(
+                            color: Constant.cRedLight,
+                            text: 'Employee not available',
+                          ),
+                          customRow(
+                            color: Constant.cWhite,
+                            text: 'Employee not anytime in company',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget customRow({required color, required text}) {
+    return Row(
+      children: [
+        Icon(Icons.info, color: color),
+        Constant.padding.widthBox,
+        Text(text, style: const TextStyle(color: Colors.black)),
+      ],
+    );
+  }
+
+  Widget customEmployeeNameWithProfilePic(var data) {
+    return /*GridView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.all(Constant.paddingHalf),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: rowSegment == 1 ? 4: rowSegment == 2 ? 7 : 4,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+        mainAxisExtent: MediaQuery.of(context).size.height * 0.23,
+      ),
+      itemCount: userListModel?.data?.length,
+      itemBuilder: (context, index) {
+        return GestureDetector(
+          onTap: () {
+            print('Id ::: ${userListModel?.data?[index].id!}');
+            BlocProvider.of<UserDetailBloc>(context).add(
+              FetchUserDetailEvent(id: "${userListModel?.data?[index].id}"),
+            );
+          },
+          child: */ GestureDetector(
+      onTap: () {
+        Logger.println('Id ::: ${data.id!}');
+        selectedUserId = data.id!;
+        BlocProvider.of<UserDetailBloc>(
+          context,
+        ).add(FetchUserDetailEvent(id: "${data.id}", context: context));
+        setState(() {});
+      },
+      child: CustomCardView(
+        height: 181,
+        child: Padding(
+          padding: const EdgeInsets.all(Constant.paddingHalf),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 38,
+                backgroundColor: data.lastTimeSlot != null
+                    ? data.lastTimeSlot.actionType == Strings.time_status[0] ||
+                              data.lastTimeSlot.actionType ==
+                                  Strings.time_status[2]
+                          ? Constant.cGreenLight
+                          : data.lastTimeSlot.actionType ==
+                                Strings.time_status[1]
+                          ? Constant.cYellowDark
+                          : Constant.cRedLight
+                    : Constant.cWhite,
+                child: CircleAvatar(
+                  radius: 35,
+                  backgroundImage: NetworkImage(
+                    "${Api.baseurl}${data.imageUrl}",
+                  ),
+                ),
+              ),
+              Constant.paddingHalfHalf.heightBox,
+              SizedBox(
+                height: 45,
+                child: Text(
+                  "${data.firstName} ${data.lastName}",
+                  softWrap: true,
+                  textAlign: TextAlign.center,
+                  style: Constant.textStyleSize15(context)?.copyWith(
+                    // fontSize: 11.sp,
+                    color: Constant.cBlack,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Constant.paddingHalfHalf.heightBox,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        certificateData = data;
+                        showDialog(
+                          context: context,
+                          builder: ((context) {
+                            return Material(
+                              color: Constant.cBlack.withOpacity(0.1),
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: Constant.padding3x,
+                                  left: MediaQuery.of(context).size.width * 0.2,
+                                ),
+                                child: Center(
+                                  child: AlertDialogue(
+                                    id: data.id,
+                                    isCurrent: true,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        );
+                      },
+                      child: Text(
+                        Strings.currentEmployee,
+                        softWrap: true,
+                        textAlign: TextAlign.center,
+                        style: Constant.textStyleSize10(context)?.copyWith(
+                          // fontSize: 9.sp,
+                          color: Constant.cGreenLight,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: ((context) {
+                            return Material(
+                              color: Constant.cBlack.withOpacity(0.1),
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: Constant.padding3x,
+                                  left: MediaQuery.of(context).size.width * 0.2,
+                                ),
+                                child: Center(
+                                  child: ResetPasswordAlertDialogue(
+                                    id: data.id,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        );
+                      },
+                      child: Text(
+                        Strings.resetPassword,
+                        softWrap: true,
+                        textAlign: TextAlign.center,
+                        style: Constant.textStyleSize10(context)?.copyWith(
+                          // fontSize: 9.sp,
+                          color: Constant.cRed,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    //     );
+    //   },
+    // );
+  }
+
+  Widget customDialog() {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Wrap(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Constant.paddingHalf),
+                color: Constant.cWhite,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(Constant.paddingHalf),
+                        topLeft: Radius.circular(Constant.paddingHalf),
+                      ),
+                      color: Constant.colorSelectedIndicator,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Constant.paddingHalf),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            Strings.addEmployee,
+                            style: Theme.of(context).textTheme.titleLarge!
+                                .copyWith(color: Constant.cWhite),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Icon(
+                              Icons.close,
+                              color: Constant.cWhite,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        bottomRight: Radius.circular(Constant.paddingHalf),
+                        bottomLeft: Radius.circular(Constant.paddingHalf),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        top: Constant.padding,
+                        left: Constant.padding,
+                        bottom: Constant.padding,
+                        right: MediaQuery.of(context).size.width * 0.1,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        autovalidateMode: _autoValidateMode
+                            ? AutovalidateMode.onUserInteraction
+                            : AutovalidateMode.disabled,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            LabelWithTextField(
+                              labelText: Strings.firstName,
+                              controller: firstNameController,
+                              validatorString: Strings.firstNameEmpty,
+                              hintText: Strings.firstNameHint,
+                              isRequired: true,
+                            ),
+                            Constant.paddingHalf.heightBox,
+                            LabelWithTextField(
+                              labelText: Strings.lastName,
+                              controller: lastNameController,
+                              validatorString: Strings.lastNameEmpty,
+                              hintText: Strings.lastNameHint,
+                              isRequired: true,
+                            ),
+                            Constant.paddingHalf.heightBox,
+                            LabelWithTextField(
+                              labelText: Strings.email,
+                              controller: emailController,
+                              validatorFunction: (val) {
+                                RegExp regExp = RegExp(Strings.emailValidate);
+                                if (val!.isEmpty) {
+                                  return Strings.emailEmpty;
+                                } else if (!regExp.hasMatch(
+                                  emailController.text,
+                                )) {
+                                  return Strings.emailValid;
+                                }
+                                return null;
+                              },
+                              validatorString: Strings.emailEmpty,
+                              hintText: Strings.emailHint,
+                              isRequired: true,
+                            ),
+                            Constant.paddingHalf.heightBox,
+                            LabelWithTextField(
+                              labelText: Strings.phone,
+                              controller: phoneController,
+                              validatorString: Strings.phoneEmpty,
+                              hintText: Strings.phoneHint,
+                              isRequired: true,
+                            ),
+                            Constant.paddingHalf.heightBox,
+                            LabelWithTextField(
+                              labelText: Strings.password,
+                              controller: passwordController,
+                              validatorString: Strings.passwordEmpty,
+                              hintText: Strings.passwordHint,
+                              isRequired: true,
+                            ),
+                            Constant.paddingHalf.heightBox,
+                            LabelWithTextField(
+                              labelText: Strings.confirmPassword,
+                              controller: confirmPasswordController,
+                              validatorFunction: (val) {
+                                if (val!.isEmpty) {
+                                  return Strings.confirmPasswordEmpty;
+                                } else if (val != passwordController.text) {
+                                  return Strings.confirmPasswordMisMatch;
+                                }
+                                return null;
+                              },
+                              hintText: Strings.confirmPasswordHint,
+                              isRequired: true,
+                            ),
+                            Constant.padding.heightBox,
+                            CustomContainerButton(
+                              height: 40,
+                              width: 140,
+                              text: Strings.submit,
+                              textStyle: Constant.textStyleSize14(
+                                context,
+                              )?.copyWith(color: Constant.cWhite),
+                              color: Constant.colorSelectedIndicator,
+                              onTap: () {
+                                if (_formKey.currentState!.validate()) {
+                                  BlocProvider.of<RegisterBloc>(context).add(
+                                    FetchRegisterEvent(
+                                      context: context,
+                                      firstName: firstNameController.text,
+                                      lastName: lastNameController.text,
+                                      email: emailController.text,
+                                      phone: phoneController.text,
+                                      password: passwordController.text,
+                                      confirmPassword:
+                                          confirmPasswordController.text,
+                                    ),
+                                  );
+                                } else {
+                                  setState(() {
+                                    _autoValidateMode = true;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS TIMER_DETAIL_TEST(
+timer_id INT NOT NULL PRIMARY KEY AUTOINCREMENT,
+employee_id TEXT NOT NULL,
+employee_name TEXT NOT NULL,
+timer_type TEXT CHECK (timer_type=='Initial In' OR timer_type=='Inter Out' OR timer_type=='Inter In' OR timer_type=='Final Out'),
+set_time TEXT NOT NULL,
+session_time TEXT,
+set_date DATE NOT NULL,
+isSync INT CHECK (isSync==1 OR isSync==0)
+);

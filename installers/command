@@ -1,0 +1,6 @@
+flutter clean && flutter pub get
+flutter build macos
+cd installers/dmg_creator
+/Users/oceanbitsolutions/.npm-global/bin/appdmg config.json obtm_29_08.dmg
+                                  OR
+appdmg config.json obtm_29_08.dmg
