@@ -280,17 +280,17 @@ class _EmployeeReportPageState extends State<EmployeeReportPage> {
                       )?.copyWith(color: Constant.cFontLight),
                     ),
                     items: years.map((year) {
-                      return DropdownMenuItem<int>(
+                      return DropdownItem<int>(
                         value: year,
                         child: Text(year.toString()),
                       );
                     }).toList(),
                     style: const TextStyle(color: Constant.cBlack),
-                    value: selectedYear,
+                    valueListenable: ValueNotifier(selectedYear),
                     onChanged: (newYear) {
                       setState(() {
                         selectedYear =
-                            newYear ??
+                            (newYear as int?) ??
                             DateTime.now().year; // Update the selected year
                       });
                       // if (repository.month == 12) {

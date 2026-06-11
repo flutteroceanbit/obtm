@@ -61,7 +61,7 @@ class _CustomDropDownButtonState extends State<CustomDropDownButton> {
           ),
           items: widget.items
               .map(
-                (item) => DropdownMenuItem<String>(
+                (item) => DropdownItem<String>(
                   value: item,
                   child: Text(
                     item,
@@ -74,15 +74,8 @@ class _CustomDropDownButtonState extends State<CustomDropDownButton> {
                 ),
               )
               .toList(),
-          value: widget.selectedValue,
-          onChanged: widget.onChanged /*(value){
-            setState(() {
-              widget.selectedValue = value as String;
-             if(widget.selectedValue!.isNotEmptyAndNotNull){
-               widget.isError = false;
-             };
-            });
-          }*/, // buttonHeight: 40,
+          valueListenable: ValueNotifier(widget.selectedValue),
+          onChanged: widget.onChanged,
           buttonStyleData: ButtonStyleData(
             width: 140,
             decoration: BoxDecoration(

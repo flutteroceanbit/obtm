@@ -244,7 +244,7 @@ class _OtherInformationState extends State<OtherInformation> {
                                               ? () {}
                                               : () async {
                                                   FilePickerResult? result =
-                                                      await FilePicker.platform
+                                                      await FilePicker
                                                           .pickFiles(
                                                     type: FileType.custom,
                                                     allowedExtensions: [

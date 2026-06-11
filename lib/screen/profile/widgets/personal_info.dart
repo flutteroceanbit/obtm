@@ -411,7 +411,6 @@ class _PersonalInfoState extends State<PersonalInfo> {
                                                     ? () async {
                                                         FilePickerResult?
                                                         result = await FilePicker
-                                                            .platform
                                                             .pickFiles(
                                                               type: FileType
                                                                   .custom,
@@ -474,7 +473,6 @@ class _PersonalInfoState extends State<PersonalInfo> {
                                                           ? () async {
                                                               FilePickerResult?
                                                               result = await FilePicker
-                                                                  .platform
                                                                   .pickFiles(
                                                                     type: FileType
                                                                         .custom,

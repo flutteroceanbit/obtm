@@ -76,7 +76,7 @@ class _CustomDropDownState extends State<CustomDropDown> {
             ),
             items: widget.list
                 .map(
-                  (item) => DropdownMenuItem<String>(
+                  (item) => DropdownItem<String>(
                     value: item,
                     child: Text(
                       item,
@@ -93,40 +93,7 @@ class _CustomDropDownState extends State<CustomDropDown> {
               });
             },
             dropdownStyleData: DropdownStyleData(offset: const Offset(0, -5)),
-
-            /*customButton: Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: Constant.paddingHalfHalf,
-                  horizontal: Constant.paddingHalf),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    widget.hintText,
-                    style: */
-            /*widget.itemTextStyle ??*/
-            /*
-                    Constant.textStyleSize13(context)?.copyWith(
-                        color: isMenuOpen
-                            ? Constant.cWhite
-                            : Constant.cGrayDark,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    isMenuOpen
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: isMenuOpen
-                        ? Constant.cWhite
-                        : widget.selectedTextColor
-
-                  ),
-                ],
-              ),
-            ),*/
-            value: widget.selectedValue,
+            valueListenable: ValueNotifier(widget.selectedValue),
             onChanged: widget.onChange,
             buttonStyleData: ButtonStyleData(
               decoration: BoxDecoration(
